@@ -1,0 +1,10 @@
+{
+  "type": "preload-native",
+  "name": "Minecraft ESP",
+  "author": "XFT GRT",
+  "version": "0.2.0",
+  "entry": "libminecraft_esp.so",
+  "minecraft_versions": [],
+  "overwrite_files": [],
+  "overwrite_folders": []
+}
