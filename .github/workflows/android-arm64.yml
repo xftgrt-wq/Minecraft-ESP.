@@ -26,8 +26,16 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release
       - name: Build
         run: cmake --build build --config Release
-      - name: Upload library
+      - name: Package LeviLauncher mod
+        run: |
+          mkdir -p dist/minecraft_esp/config
+          cp build/libminecraft_esp.so dist/minecraft_esp/
+          cp manifest.json dist/minecraft_esp/
+          cp config/config.json config/config.schema.json dist/minecraft_esp/config/
+          cd dist
+          zip -r minecraft-esp-android.levipack minecraft_esp
+      - name: Upload mod package
         uses: actions/upload-artifact@v4
         with:
-          name: minecraft-esp-arm64-prototype
-          path: build/libminecraft_esp.so
+          name: minecraft-esp-levipack-arm64
+          path: dist/minecraft-esp-android.levipack
