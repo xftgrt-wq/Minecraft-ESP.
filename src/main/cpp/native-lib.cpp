@@ -1,36 +1,15 @@
-#include <pl/Mod.hpp>
-#include <pl/ModMenu.hpp>
+#include <jni.h>
+#include <android/log.h>
 
-class ESPMod {
-public:
-    static ESPMod& instance() {
-        static ESPMod mod;
-        return mod;
+#define LOG_TAG "MinecraftESP"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+
+extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
+    JNIEnv* env = nullptr;
+    if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
+        return JNI_ERR;
     }
 
-    ESPMod() : mSelf(*ll::mod::NativeMod::current()) {}
-
-    [[nodiscard]] ll::mod::NativeMod& getSelf() const { return mSelf; }
-
-    bool load() {
-        getSelf().getLogger().info("Minecraft ESP prototype loaded");
-        return true;
-    }
-
-    bool enable() {
-        return pl::modmenu::ModuleBuilder("minecraft_esp.overlay", "3D ESP")
-            .modId(getSelf().getId())
-            .description("ESP prototype: rendering is not implemented yet.")
-            .defaultEnabled(false)
-            .registerModule();
-    }
-
-    bool disable() {
-        return true;
-    }
-
-private:
-    ll::mod::NativeMod& mSelf;
-};
-
-PL_REGISTER_MOD(ESPMod, ESPMod::instance())
+    LOGI("Native library loaded. ESP hooks are not implemented yet.");
+    return JNI_VERSION_1_6;
+}
