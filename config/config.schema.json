@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "properties": {
+    "version": { "type": "integer", "default": 1 },
+    "enabled": { "type": "boolean", "default": false }
+  },
+  "required": ["version", "enabled"],
+  "additionalProperties": false
+}
