@@ -3,6 +3,7 @@
 #include <pl/Mod.hpp>
 #include <pl/ModMenu.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <filesystem>
@@ -95,50 +96,52 @@ private:
 };
 }
 
-bool esp_overlay_submit_segments(const EspScreenSegment* segments,
-                                 std::size_t count,
-                                 EspOverlayKind kind,
-                                 float thickness) {
+bool esp_overlay_submit_frame(const EspScreenSegment* playerSegments,
+                              std::size_t playerCount,
+                              const EspScreenSegment* itemSegments,
+                              std::size_t itemCount,
+                              float thickness) {
     if (!g_moduleRegistered.load(std::memory_order_acquire) ||
         !g_moduleEnabled.load(std::memory_order_acquire) ||
-        !segments || !std::isfinite(thickness) || thickness <= 0.0f) {
-        return false;
-    }
-
-    if (kind == EspOverlayKind::Player &&
-        !g_playersEnabled.load(std::memory_order_acquire)) {
-        return false;
-    }
-    if (kind == EspOverlayKind::DroppedItem &&
-        !g_itemsEnabled.load(std::memory_order_acquire)) {
+        (playerCount && !playerSegments) || (itemCount && !itemSegments) ||
+        !std::isfinite(thickness) || thickness <= 0.0f) {
         return false;
     }
 
     constexpr std::size_t kMaxCommands = 4096;
-    if (count > kMaxCommands) count = kMaxCommands;
-
-    const std::uint32_t color =
-        kind == EspOverlayKind::Player ? 0xFFFF3030u : 0xFF30E060u;
-
     std::vector<pl::modmenu::DrawCommand> commands;
-    commands.reserve(count);
-    for (std::size_t i = 0; i < count; ++i) {
-        const auto& segment = segments[i];
-        if (!segment.valid ||
-            !std::isfinite(segment.x1) || !std::isfinite(segment.y1) ||
-            !std::isfinite(segment.x2) || !std::isfinite(segment.y2)) {
-            continue;
+    commands.reserve(std::min(playerCount + itemCount, kMaxCommands));
+
+    const auto append = [&](const EspScreenSegment* segments,
+                            std::size_t count,
+                            bool enabled,
+                            std::uint32_t color) {
+        if (!enabled || !segments || commands.size() >= kMaxCommands) return;
+        const std::size_t available = kMaxCommands - commands.size();
+        const std::size_t limit = std::min(count, available);
+        for (std::size_t i = 0; i < limit; ++i) {
+            const auto& segment = segments[i];
+            if (!segment.valid ||
+                !std::isfinite(segment.x1) || !std::isfinite(segment.y1) ||
+                !std::isfinite(segment.x2) || !std::isfinite(segment.y2)) {
+                continue;
+            }
+            commands.push_back({
+                .type = pl::modmenu::DrawCommandType::Line,
+                .x = segment.x1,
+                .y = segment.y1,
+                .w = segment.x2 - segment.x1,
+                .h = segment.y2 - segment.y1,
+                .color = color,
+                .size = thickness
+            });
         }
-        commands.push_back({
-            .type = pl::modmenu::DrawCommandType::Line,
-            .x = segment.x1,
-            .y = segment.y1,
-            .w = segment.x2 - segment.x1,
-            .h = segment.y2 - segment.y1,
-            .color = color,
-            .size = thickness
-        });
-    }
+    };
+
+    append(playerSegments, playerCount,
+           g_playersEnabled.load(std::memory_order_acquire), 0xFFFF3030u);
+    append(itemSegments, itemCount,
+           g_itemsEnabled.load(std::memory_order_acquire), 0xFF30E060u);
 
     pl::modmenu::submitDrawCommands(kModuleId, commands);
     return true;
