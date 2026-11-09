@@ -93,11 +93,11 @@ A working implementation still requires verified runtime access to:
 4. a supported and correctly timed render/HUD submission point;
 5. safe cleanup when the world or renderer changes.
 
-Do not replace the game's original `libminecraftpe.so` with this prototype. Do not hardcode TAAContext-relative fields as global offsets. The signature resolver diagnostic is not a uniqueness proof and no hook is installed. A wrong hook or stale context pointer can crash the game.
+Do not replace the game's original `libminecraftpe.so` with this prototype. Do not hardcode TAAContext-relative fields as global offsets. The device-side independent scan confirms one complete signature match in executable mappings, but this does not validate the callback ABI, argument lifetime, matrix convention, or render timing. No hook is installed. A wrong hook or stale context pointer can crash the game.
 
 ## Next engineering steps
 
-1. Runtime-check Preloader module loading and the signature diagnostic on the exact target game/launcher.
+1. Device-verified: the native module loads, the Mod Menu entry registers, and the complete TAA signature has exactly one match in executable mappings in the live process (see `analysis/2026-11-09-device-signature-validation-and-hook-safety.md`).
 2. Identify a supported render callback and prove its timing and lifetime.
 3. Validate matrix layout and world-origin rebasing against live game coordinates.
 4. Recover entity/item iteration and AABB access without copying offsets from other Bedrock versions.
