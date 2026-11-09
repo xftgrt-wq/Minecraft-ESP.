@@ -5,6 +5,13 @@
 #include <iostream>
 
 int main() {
+    const EspAabbEdge* edges = esp_aabb_edges();
+    assert(edges != nullptr);
+    for (int i = 0; i < 12; ++i) {
+        assert(edges[i].a < 8 && edges[i].b < 8);
+        assert(edges[i].a != edges[i].b);
+    }
+
     const float identity[16] = {
         1, 0, 0, 0,
         0, 1, 0, 0,
