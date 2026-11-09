@@ -4,7 +4,10 @@
 #include <pl/ModMenu.hpp>
 
 #include <atomic>
+#include <cmath>
 #include <filesystem>
+#include <span>
+#include <vector>
 #include <string>
 #include <string_view>
 
