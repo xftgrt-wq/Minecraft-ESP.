@@ -22,6 +22,14 @@ struct EspScreenPoint {
     std::uint32_t valid;
 };
 
+// A projected edge segment. valid is zero when the edge is fully behind the
+// homogeneous near plane or contains invalid coordinates.
+struct EspScreenSegment {
+    float x1, y1, depth1;
+    float x2, y2, depth2;
+    std::uint32_t valid;
+};
+
 struct EspAabbEdge { std::uint8_t a, b; };
 
 // Returns the 12 canonical box edges, indexed into the eight projected corners.
@@ -35,5 +43,14 @@ ESP_API int esp_project_aabb(
     float viewport_width,
     float viewport_height,
     EspScreenPoint* out_points_8);
+
+// Projects all 12 AABB edges and clips edges crossing the w=epsilon plane.
+// This preserves visible edge fragments when some box corners are behind camera.
+ESP_API int esp_project_aabb_edges(
+    const EspAabb* bounds,
+    const float* view_projection_16,
+    float viewport_width,
+    float viewport_height,
+    EspScreenSegment* out_segments_12);
 
 }
