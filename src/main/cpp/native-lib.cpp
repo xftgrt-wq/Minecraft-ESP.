@@ -178,6 +178,32 @@ bool parse_bool(std::string_view value, bool fallback) {
     return fallback;
 }
 
+void submitDiagnosticHud() {
+    if (!g_moduleRegistered.load(std::memory_order_acquire) ||
+        !g_moduleEnabled.load(std::memory_order_acquire)) {
+        return;
+    }
+
+    // LeviLauncher 1.5.13 resolves -20000 to the screen center. Text uses
+    // baseline coordinates and w=-2 for centered alignment.
+    const pl::modmenu::DrawCommand status{
+        .type = pl::modmenu::DrawCommandType::Text,
+        .x = -20000.0f,
+        .y = 56.0f,
+        .w = -2.0f,
+        .h = 0.0f,
+        .x3 = 0.0f,
+        .y3 = 0.0f,
+        .color = 0xFFFFFFFFu,
+        .size = 18.0f,
+        .text = "3D ESP: HUD OK | entity scan inactive",
+        .fontId = {},
+        .imageId = {}
+    };
+    pl::modmenu::submitDrawCommands(
+        kModuleId, std::span<const pl::modmenu::DrawCommand>(&status, 1));
+}
+
 class MinecraftEspMod {
 public:
     static MinecraftEspMod& instance() {
@@ -276,7 +302,8 @@ public:
             .config("dropped_items", "Dropped items", pl::modmenu::ConfigType::Toggle, "true")
             .onToggle([](std::string_view, bool enabled) {
                 g_moduleEnabled.store(enabled, std::memory_order_release);
-                if (!enabled) esp_overlay_clear();
+                if (enabled) submitDiagnosticHud();
+                else esp_overlay_clear();
             })
             .onConfigChanged([](std::string_view, std::string_view key,
                                 std::string_view value) {
@@ -373,6 +400,25 @@ bool esp_overlay_submit_frame(const EspScreenSegment* playerSegments,
            g_playersEnabled.load(std::memory_order_acquire), 0xFFFF3030u);
     append(itemSegments, itemCount,
            g_itemsEnabled.load(std::memory_order_acquire), 0xFF30E060u);
+
+    // Keep the independent HUD diagnostic visible when a future validated
+    // frame producer replaces the module's draw-command batch.
+    if (commands.size() < kMaxCommands) {
+        commands.push_back({
+            .type = pl::modmenu::DrawCommandType::Text,
+            .x = -20000.0f,
+            .y = 56.0f,
+            .w = -2.0f,
+            .h = 0.0f,
+            .x3 = 0.0f,
+            .y3 = 0.0f,
+            .color = 0xFFFFFFFFu,
+            .size = 18.0f,
+            .text = "3D ESP: HUD OK | entity scan inactive",
+            .fontId = {},
+            .imageId = {}
+        });
+    }
 
     pl::modmenu::submitDrawCommands(kModuleId, commands);
     return true;
