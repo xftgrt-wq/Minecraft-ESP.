@@ -33,22 +33,26 @@ public:
         return mod;
     }
 
-    MinecraftEspMod() : mSelf(*ll::mod::NativeMod::current()) {}
-
     bool load() {
+        // PLGetModRegistration() may construct this singleton before a lifecycle
+        // scope exists. Resolve NativeMod::current() only inside load(), where
+        // Preloader guarantees the current-mod context.
+        mSelf = ll::mod::NativeMod::current();
+        if (!mSelf) return false;
+
         std::error_code error;
-        std::filesystem::create_directories(mSelf.getConfigDir(), error);
+        std::filesystem::create_directories(mSelf->getConfigDir(), error);
         if (error) {
-            mSelf.getLogger().warn("Could not create config directory: {}", error.message());
+            mSelf->getLogger().warn("Could not create config directory: {}", error.message());
         }
-        mSelf.getLogger().info("Minecraft ESP native module loaded (render hooks pending)");
+        mSelf->getLogger().info("Minecraft ESP native module loaded (render hooks pending)");
         return true;
     }
 
     bool enable() {
         pl::modmenu::ModuleBuilder builder(std::string(kModuleId), "3D ESP");
         const bool registered = builder
-            .modId(mSelf.getId())
+            .modId(mSelf->getId())
             .description("3D entity outlines. Runtime entity and camera integration is not active yet.")
             .defaultEnabled(false)
             .config("players", "Players", pl::modmenu::ConfigType::Toggle, "true")
@@ -69,10 +73,10 @@ public:
 
         g_moduleRegistered.store(registered, std::memory_order_release);
         if (!registered) {
-            mSelf.getLogger().error("Failed to register 3D ESP Mod Menu module");
+            mSelf->getLogger().error("Failed to register 3D ESP Mod Menu module");
             return false;
         }
-        mSelf.getLogger().info("3D ESP toggle registered in LeviLauncher Mod Menu");
+        mSelf->getLogger().info("3D ESP toggle registered in LeviLauncher Mod Menu");
         return true;
     }
 
@@ -87,12 +91,12 @@ public:
 
     bool unload() {
         disable();
-        mSelf.getLogger().info("Minecraft ESP native module unloaded");
+        if (mSelf) mSelf->getLogger().info("Minecraft ESP native module unloaded");
         return true;
     }
 
 private:
-    ll::mod::NativeMod& mSelf;
+    ll::mod::NativeMod* mSelf{};
 };
 }
 
