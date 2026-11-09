@@ -51,7 +51,7 @@ The native module has a lifecycle registration and a Mod Menu entry named **3D E
 
 The line command mapping was checked against the matching `v1.5.13` launcher source: the renderer draws from `(x, y)` to `(x + w, y + h)`, so projected segment endpoints map directly to the SDK line command.
 
-**Important:** this is an integration scaffold, not yet an active ESP. No world/entity callback currently calls the frame submission API, and no live entity AABBs are collected. The menu switch and draw bridge compile, but in-game registration and drawing have not yet been verified on the target device.
+**Important:** this is an integration scaffold, not yet an active ESP. No world/entity callback currently calls the frame submission API, and no live entity AABBs are collected. The menu switch and draw bridge compile. On 2026-11-09, the project owner confirmed on the target device that the Mod Menu entry appears, the ESP toggle can be enabled and stays enabled, but no 3D boxes appear. This confirms menu/toggle operation only; it does not confirm entity collection or frame submission.
 
 ## Geometry module
 
@@ -84,7 +84,7 @@ This verifies compilation and packaging only. It does not establish compatibilit
 
 ## Current status — not a working ESP
 
-This repository is still a native build prototype, **not a working in-game ESP**. No player/item enumeration, live entity AABB retrieval, supported render hook, actual line submission, through-wall rendering, or verified in-game toggle behavior is implemented. The Preloader lifecycle and HUD bridge compile, but runtime entity and camera integration remains outstanding.
+This repository is still a native build prototype, **not a working in-game ESP**. The target-device test confirms that the module loads, the Mod Menu entry appears, and the toggle stays enabled; the user reports that no boxes are visible. No player/item enumeration, live entity AABB retrieval, supported render callback, or actual per-frame line submission is implemented. Through-wall rendering is also unverified. Runtime entity and camera integration remains outstanding.
 
 A working implementation still requires verified runtime access to:
 1. the current world and entity/item collections;
