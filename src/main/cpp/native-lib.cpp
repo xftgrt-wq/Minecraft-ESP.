@@ -316,10 +316,20 @@ public:
             .defaultEnabled(false)
             .config("players", "Players", pl::modmenu::ConfigType::Toggle, "true")
             .config("dropped_items", "Dropped items", pl::modmenu::ConfigType::Toggle, "true")
-            .onToggle([](std::string_view, bool enabled) {
+            .onToggle([this](std::string_view moduleId, bool enabled) {
                 g_moduleEnabled.store(enabled, std::memory_order_release);
-                if (enabled) submitDiagnosticHud();
-                else esp_overlay_clear();
+                mSelf->getLogger().info(
+                    "HUD bridge diagnostic: toggle callback module_id='{}' enabled={} registered={}",
+                    moduleId, enabled, g_moduleRegistered.load(std::memory_order_acquire));
+                if (enabled) {
+                    submitDiagnosticHud();
+                    mSelf->getLogger().info(
+                        "HUD bridge diagnostic: submitted fixed test rect/text commands for '{}'",
+                        kModuleId);
+                } else {
+                    esp_overlay_clear();
+                    mSelf->getLogger().info("HUD bridge diagnostic: cleared commands for '{}'", kModuleId);
+                }
             })
             .onConfigChanged([](std::string_view, std::string_view key,
                                 std::string_view value) {
