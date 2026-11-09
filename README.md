@@ -36,6 +36,25 @@ Detailed notes:
 - `analysis/2026-11-09-taa-uniform-store-helper-size.md`
 - `analysis/2026-11-09-taa-world-origin-source-fields.md`
 
+## LeviLauncher 1.5.13 Preloader integration
+
+The repository now pins the exact Preloader submodule commit embedded in the official LeviLaunchroid `v1.5.13` source tag:
+
+- Launcher source tag: `LiteLDev/LeviLaunchroid v1.5.13`
+- Embedded Preloader commit: `8c19383f417744d3165165de9afca42b60059174`
+- Native SDK: `LiteLDev/preloader-android`
+- Public API used: `PL_REGISTER_MOD`, native mod lifecycle, and `pl::modmenu::ModuleBuilder`
+- HUD API: `pl::modmenu::submitDrawCommands` with `DrawCommandType::Line`
+- Android build toolchain is being aligned to the launcher's NDK `28.2.13676358` and `c++_shared`.
+
+The native module now has a lifecycle registration and a Mod Menu entry named **3D ESP**, with separate Players and Dropped items switches. A frame submission interface combines red player segments and green dropped-item segments into one HUD draw-command batch. LeviLauncher's Android HUD overlay redraws submitted commands each frame.
+
+The line command mapping was checked against the matching `v1.5.13` launcher source: the renderer draws from `(x, y)` to `(x + w, y + h)`, so projected segment endpoints map directly to the SDK line command.
+
+**Important:** this is an integration scaffold, not yet an active ESP. No world/entity callback currently calls the frame submission API, and no live entity AABBs are collected. The menu switch and draw bridge compile only after the new Preloader-linked build succeeds.
+
+The manifest is at `manifest.json`. The workflow packages the native library and manifest into a `.levipack` alongside the standalone `.so`.
+
 ## Geometry module
 
 The native geometry module provides:
