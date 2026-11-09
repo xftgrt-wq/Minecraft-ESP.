@@ -8,33 +8,68 @@ Target supplied by the project owner:
 
 ## Binary analysis of the supplied game library
 
-The supplied `libminecraftpe.so` was inspected locally on 2026-11-07.
+The supplied `libminecraftpe.so` was inspected locally on 2026-11-09.
 
 Verified facts:
 - ELF64, little-endian, AArch64 shared object.
 - File size: 349,243,744 bytes.
-- Android build number string found: `47475273`, matching the published Android arm64-v8a build for Bedrock 26.33.
+- Android build number string found: `47475273`, matching the supplied Bedrock 26.33 Android build.
 - GNU Build ID: `2e318db12824cadb2618754ab7c82fa96fb30659`.
 - SHA-256: `d659c56ebae1dd22a7014a70a293e3d68d26938f18dd88dfe4ee9e34eea9c8c1`.
-- The ELF contains 89,746 dynamic symbol entries, but the defined exported C++ symbols inspected so far are primarily third-party libraries (V8, WebRTC, LevelDB, cohtml, Xbox services). The required Bedrock entity, item, camera, and world-render APIs were not exposed by recognizable exported names.
-- The library is stripped of full debug information; a matching signature database or disassembly-based analysis is required before any game hook can be considered safe.
+- The required Bedrock entity, item, camera, and world-render APIs were not exposed by recognizable exported names; private-code analysis is required.
 
-## Current status
+## Confirmed render-camera lead
 
-This repository is a native Android build prototype only. It is **not a working ESP mod**. No player/item enumeration, camera projection, through-wall outline rendering, or distance-independent ESP is implemented.
+RTTI and relocation analysis ties the routine at VA `0x1290c4a8` to the `dragon::framerenderer::modules::taau` TAA upscaling render-graph callback. Its second callback argument is strongly identified as `TAAContext`.
 
-A working ESP requires verified runtime access to:
+Within that callback:
+- `TAAContext + 0x208` supplies the 64-byte `CurrentViewProjectionMatrixUniform` payload.
+- `TAAContext + 0x248` supplies the 64-byte `PreviousViewProjectionMatrixUniform` payload.
+- `TAAContext + 0x288..0x293` supplies the 12-byte `CurrentWorldOrigin` payload.
+- The previous world origin is assembled partly from another live pointer, so its full owner/lifetime is not yet known.
+
+The generic uniform-store helper independently copies 64 bytes from each matrix payload. This confirms payload size and semantic names, but not matrix element order, coordinate convention, or whether the context can be read safely outside the TAA callback.
+
+Detailed notes:
+- `analysis/2026-11-09-taa-callback-rtti-and-context-identification.md`
+- `analysis/2026-11-09-taau-context-field-map.md`
+- `analysis/2026-11-09-taa-uniform-store-helper-size.md`
+- `analysis/2026-11-09-taa-world-origin-source-fields.md`
+
+## Geometry module
+
+The native geometry module provides:
+- projection of eight AABB corners using an explicitly assumed column-major OpenGL-style 4x4 matrix;
+- the 12 canonical AABB edges;
+- edge projection and clipping against the homogeneous camera plane and all six OpenGL frustum planes;
+- finite-input validation and screen-space segment output.
+
+Tests cover identity projection, camera-plane crossings, side/far frustum clipping, off-screen boxes, invalid bounds, null pointers, and non-finite inputs.
+
+## CI status
+
+A verified Android ARM64 build and geometry-test run succeeded:
+https://github.com/xftgrt-wq/Minecraft-ESP./actions/runs/42669487644
+
+The workflow uses Android NDK 27.2.12479018 and ABI `arm64-v8a`. Host geometry tests have also passed after the expanded far-plane/non-finite test cases. A newer workflow revision is adding AddressSanitizer and UndefinedBehaviorSanitizer to the host tests; check Actions for its final result.
+
+## Current status — not a working ESP
+
+This repository is still a native build prototype, **not a working in-game ESP**. No player/item enumeration, live entity AABB retrieval, supported render hook, actual line submission, through-wall rendering, or toggle UI is implemented. The Android artifact currently contains the geometry module and a JNI load-log stub; it must not be mistaken for an installable ESP.
+
+A working implementation still requires verified runtime access to:
 1. the current world and entity/item collections;
 2. entity positions and bounding boxes;
-3. the active camera view/projection matrices;
-4. a supported render or HUD submission point.
+3. the correct world-to-camera transform, including world-origin rebasing;
+4. a supported and correctly timed render/HUD submission point;
+5. a mobile toggle and robust cleanup when the world or renderer changes.
 
-Do not guess offsets or install unverified hooks: an incorrect ARM64 hook can crash the game or corrupt memory.
+Do not replace the game's original `libminecraftpe.so` with this prototype. Do not hardcode TAAContext-relative fields as global offsets. A wrong hook or stale context pointer can crash the game.
 
-## Build
+## Next engineering steps
 
-The GitHub Actions workflow builds an ARM64 native prototype. Open **Actions**, inspect the **Android ARM64 build** workflow, and download its artifact only if the run succeeds.
-
-## Next engineering step
-
-Port a known public BedrockTools signature set to this exact build and validate each signature against the supplied binary. Any candidate must be unique and its function behavior/calling convention must be confirmed before it is used. Then implement the ESP using the documented LeviLauncher Preloader SDK and its supported HUD drawing API.
+1. Identify a supported LeviLauncher Preloader render callback compatible with this exact game build.
+2. Determine whether that callback exposes a valid matrix or whether the TAA pass context can be safely observed during its lifetime.
+3. Validate matrix layout and world-origin rebasing against live game coordinates.
+4. Recover entity/item iteration and AABB access without copying offsets from other Bedrock versions.
+5. Connect the validated AABBs to the geometry module and implement drawing only after the callback and coordinate space are proven.
