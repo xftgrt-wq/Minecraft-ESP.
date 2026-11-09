@@ -38,22 +38,20 @@ Detailed notes:
 
 ## LeviLauncher 1.5.13 Preloader integration
 
-The repository now pins the exact Preloader submodule commit embedded in the official LeviLaunchroid `v1.5.13` source tag:
+The repository pins the exact Preloader submodule commit embedded in the official LeviLaunchroid `v1.5.13` source tag:
 
 - Launcher source tag: `LiteLDev/LeviLaunchroid v1.5.13`
 - Embedded Preloader commit: `8c19383f417744d3165165de9afca42b60059174`
 - Native SDK: `LiteLDev/preloader-android`
 - Public API used: `PL_REGISTER_MOD`, native mod lifecycle, and `pl::modmenu::ModuleBuilder`
 - HUD API: `pl::modmenu::submitDrawCommands` with `DrawCommandType::Line`
-- Android build toolchain is being aligned to the launcher's NDK `28.2.13676358` and `c++_shared`.
+- Verified build toolchain: Android NDK r28b (28.2.13676358), ABI `arm64-v8a`, Android API 28, `c++_shared`.
 
-The native module now has a lifecycle registration and a Mod Menu entry named **3D ESP**, with separate Players and Dropped items switches. A frame submission interface combines red player segments and green dropped-item segments into one HUD draw-command batch. LeviLauncher's Android HUD overlay redraws submitted commands each frame.
+The native module has a lifecycle registration and a Mod Menu entry named **3D ESP**, with separate Players and Dropped items switches. A frame submission interface combines red player segments and green dropped-item segments into one HUD draw-command batch. LeviLauncher's Android HUD overlay redraws submitted commands each frame.
 
 The line command mapping was checked against the matching `v1.5.13` launcher source: the renderer draws from `(x, y)` to `(x + w, y + h)`, so projected segment endpoints map directly to the SDK line command.
 
-**Important:** this is an integration scaffold, not yet an active ESP. No world/entity callback currently calls the frame submission API, and no live entity AABBs are collected. The menu switch and draw bridge compile only after the new Preloader-linked build succeeds.
-
-The manifest is at `manifest.json`. The workflow packages the native library and manifest into a `.levipack` alongside the standalone `.so`.
+**Important:** this is an integration scaffold, not yet an active ESP. No world/entity callback currently calls the frame submission API, and no live entity AABBs are collected. The menu switch and draw bridge compile, but in-game registration and drawing have not yet been verified on the target device.
 
 ## Geometry module
 
@@ -63,32 +61,44 @@ The native geometry module provides:
 - edge projection and clipping against the homogeneous camera plane and all six OpenGL frustum planes;
 - finite-input validation and screen-space segment output.
 
-Tests cover identity projection, camera-plane crossings, side/far frustum clipping, off-screen boxes, invalid bounds, null pointers, and non-finite inputs.
+Tests cover identity projection, camera-plane crossings, side/far frustum clipping, off-screen boxes, invalid bounds, null pointers, and non-finite inputs. The host CI job compiles these tests with AddressSanitizer and UndefinedBehaviorSanitizer; they pass.
 
-## CI status
+## Android ARM64 build — verified
 
-Host geometry tests with AddressSanitizer and UndefinedBehaviorSanitizer passed in the recent CI runs. The first Preloader-linked Android build compiled the Preloader dependency but exposed a missing-field initializer warning in the new HUD command. The command initializer has since been expanded to include all fields; the corrected Android build is queued here:
-https://github.com/xftgrt-wq/Minecraft-ESP./actions/runs/42671490114
+GitHub Actions run [42674589492](https://github.com/xftgrt-wq/Minecraft-ESP./actions/runs/42674589492) completed successfully on commit `cd8d15bdbff29effd99207cd28097bdbee27b242`.
 
-Do not treat the earlier NDK 27 build artifact as a verified Preloader integration build.
+All workflow steps passed:
+- host geometry tests;
+- Android SDK setup;
+- pinned Android NDK r28b setup;
+- CMake configuration for `arm64-v8a`;
+- native library compilation;
+- ELF architecture/dependency verification;
+- LeviPack packaging and artifact upload.
+
+The uploaded artifact is `minecraft-esp-arm64-prototype` (artifact ID `13700875076`). It contains:
+- `build/libminecraft_esp.so` — verified ELF64 AArch64 shared library, Android API 28, NDK r28b; SHA-256 `5c20c9b5ed5e154c274138f173a5bb025ee4e9bf695ac6d24628d0329c1d0ffa`.
+- `dist/minecraft_esp.levipack` — ZIP integrity verified; SHA-256 `67eccaa0ce9616e90f62dcf39384565d499d3f1aab6b54c58ca4d77ce4f5fe29`.
+
+This verifies compilation and packaging only. It does not establish compatibility with the live game process or prove that the ESP works.
 
 ## Current status — not a working ESP
 
-This repository is still a native build prototype, **not a working in-game ESP**. No player/item enumeration, live entity AABB retrieval, supported render hook, actual line submission, through-wall rendering, or toggle UI is implemented. The Preloader lifecycle and HUD bridge are implemented in source, but the latest corrected Android artifact has not yet completed CI. Even after a successful build, it must not be mistaken for a working ESP until runtime entity and camera integration is implemented.
+This repository is still a native build prototype, **not a working in-game ESP**. No player/item enumeration, live entity AABB retrieval, supported render hook, actual line submission, through-wall rendering, or verified in-game toggle behavior is implemented. The Preloader lifecycle and HUD bridge compile, but runtime entity and camera integration remains outstanding.
 
 A working implementation still requires verified runtime access to:
 1. the current world and entity/item collections;
 2. entity positions and bounding boxes;
 3. the correct world-to-camera transform, including world-origin rebasing;
 4. a supported and correctly timed render/HUD submission point;
-5. a mobile toggle and robust cleanup when the world or renderer changes.
+5. safe cleanup when the world or renderer changes.
 
-Do not replace the game's original `libminecraftpe.so` with this prototype. Do not hardcode TAAContext-relative fields as global offsets. A wrong hook or stale context pointer can crash the game.
+Do not replace the game's original `libminecraftpe.so` with this prototype. Do not hardcode TAAContext-relative fields as global offsets. The signature resolver diagnostic is not a uniqueness proof and no hook is installed. A wrong hook or stale context pointer can crash the game.
 
 ## Next engineering steps
 
-1. Identify a supported LeviLauncher Preloader render callback compatible with this exact game build.
-2. Determine whether that callback exposes a valid matrix or whether the TAA pass context can be safely observed during its lifetime.
+1. Runtime-check Preloader module loading and the signature diagnostic on the exact target game/launcher.
+2. Identify a supported render callback and prove its timing and lifetime.
 3. Validate matrix layout and world-origin rebasing against live game coordinates.
 4. Recover entity/item iteration and AABB access without copying offsets from other Bedrock versions.
-5. Connect the validated AABBs to the geometry module and implement drawing only after the callback and coordinate space are proven.
+5. Connect validated AABBs to the geometry module and submit drawing only after the callback and coordinate space are proven.
