@@ -184,24 +184,40 @@ void submitDiagnosticHud() {
         return;
     }
 
-    // LeviLauncher 1.5.13 resolves -20000 to the screen center. Text uses
-    // baseline coordinates and w=-2 for centered alignment.
-    const pl::modmenu::DrawCommand status{
-        .type = pl::modmenu::DrawCommandType::Text,
-        .x = -20000.0f,
-        .y = 56.0f,
-        .w = -2.0f,
-        .h = 0.0f,
-        .x3 = 0.0f,
-        .y3 = 0.0f,
-        .color = 0xFFFFFFFFu,
-        .size = 18.0f,
-        .text = "3D ESP: HUD OK | entity scan inactive",
-        .fontId = {},
-        .imageId = {}
-    };
-    pl::modmenu::submitDrawCommands(
-        kModuleId, std::span<const pl::modmenu::DrawCommand>(&status, 1));
+    // Use ordinary positive pixel coordinates and a filled background.
+    // This avoids relying on the launcher's special center/right alignment
+    // sentinels while testing the native-to-HUD command bridge.
+    const std::array<pl::modmenu::DrawCommand, 2> commands{{
+        {
+            .type = pl::modmenu::DrawCommandType::RectFilled,
+            .x = 16.0f,
+            .y = 24.0f,
+            .w = 280.0f,
+            .h = 44.0f,
+            .x3 = 0.0f,
+            .y3 = 0.0f,
+            .color = 0xE0202020u,
+            .size = 0.0f,
+            .text = {},
+            .fontId = {},
+            .imageId = {}
+        },
+        {
+            .type = pl::modmenu::DrawCommandType::Text,
+            .x = 26.0f,
+            .y = 53.0f,
+            .w = 0.0f,
+            .h = 0.0f,
+            .x3 = 0.0f,
+            .y3 = 0.0f,
+            .color = 0xFFFFFFFFu,
+            .size = 17.0f,
+            .text = "ESP HUD PIPELINE OK",
+            .fontId = {},
+            .imageId = {}
+        }
+    }};
+    pl::modmenu::submitDrawCommands(kModuleId, commands);
 }
 
 class MinecraftEspMod {
@@ -401,22 +417,20 @@ bool esp_overlay_submit_frame(const EspScreenSegment* playerSegments,
     append(itemSegments, itemCount,
            g_itemsEnabled.load(std::memory_order_acquire), 0xFF30E060u);
 
-    // Keep the independent HUD diagnostic visible when a future validated
-    // frame producer replaces the module's draw-command batch.
-    if (commands.size() < kMaxCommands) {
+    // Preserve the fixed-coordinate HUD bridge diagnostic in frame batches.
+    if (commands.size() + 2 <= kMaxCommands) {
+        commands.push_back({
+            .type = pl::modmenu::DrawCommandType::RectFilled,
+            .x = 16.0f, .y = 24.0f, .w = 280.0f, .h = 44.0f,
+            .x3 = 0.0f, .y3 = 0.0f, .color = 0xE0202020u,
+            .size = 0.0f, .text = {}, .fontId = {}, .imageId = {}
+        });
         commands.push_back({
             .type = pl::modmenu::DrawCommandType::Text,
-            .x = -20000.0f,
-            .y = 56.0f,
-            .w = -2.0f,
-            .h = 0.0f,
-            .x3 = 0.0f,
-            .y3 = 0.0f,
-            .color = 0xFFFFFFFFu,
-            .size = 18.0f,
-            .text = "3D ESP: HUD OK | entity scan inactive",
-            .fontId = {},
-            .imageId = {}
+            .x = 26.0f, .y = 53.0f, .w = 0.0f, .h = 0.0f,
+            .x3 = 0.0f, .y3 = 0.0f, .color = 0xFFFFFFFFu,
+            .size = 17.0f, .text = "ESP HUD PIPELINE OK",
+            .fontId = {}, .imageId = {}
         });
     }
 
