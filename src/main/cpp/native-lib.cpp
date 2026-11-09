@@ -138,7 +138,10 @@ bool esp_overlay_submit_frame(const EspScreenSegment* playerSegments,
                 .w = segment.x2 - segment.x1,
                 .h = segment.y2 - segment.y1,
                 .color = color,
-                .size = thickness
+                .size = thickness,
+                .text = {},
+                .fontId = {},
+                .imageId = {}
             });
         }
     };
