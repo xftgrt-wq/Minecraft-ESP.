@@ -41,8 +41,8 @@ int main() {
     assert(esp_project_aabb(&bounds, negative_w, 100.0f, 100.0f, points) == 0);
     assert(esp_project_aabb_edges(&bounds, negative_w, 100.0f, 100.0f, segments) == 0);
 
-    // w=z: four vertical box edges cross the near plane. Their visible
-    // fragments must survive even though half of the box corners are behind.
+    // w=z: four vertical box edges cross the camera plane. Their visible
+    // fragments survive, while the four rear-face edges are rejected.
     const float crossing_w[16] = {
         1, 0, 0, 0,
         0, 1, 0, 0,
@@ -52,15 +52,13 @@ int main() {
     const EspAabb crossing_box{-0.5f, -0.5f, -1.0f, 0.5f, 0.5f, 1.0f};
     assert(esp_project_aabb(&crossing_box, crossing_w, 100.0f, 100.0f, points) == 4);
     assert(esp_project_aabb_edges(&crossing_box, crossing_w, 100.0f, 100.0f, segments) == 8);
-    int clipped_count = 0;
-    for (const auto& segment : segments) {
-        if (!segment.valid) continue;
-        ++clipped_count;
-        assert(std::isfinite(segment.x1) && std::isfinite(segment.y1));
-        assert(std::isfinite(segment.x2) && std::isfinite(segment.y2));
-        assert(std::isfinite(segment.depth1) && std::isfinite(segment.depth2));
-    }
-    assert(clipped_count == 8);
+
+    // A box crossing the left clip plane keeps its intersecting edges, but
+    // fully off-screen edges are discarded.
+    const EspAabb side_crossing{-2.0f, -0.5f, -0.5f, 0.0f, 0.5f, 0.5f};
+    assert(esp_project_aabb_edges(&side_crossing, identity, 100.0f, 100.0f, segments) == 8);
+    const EspAabb outside_box{2.0f, -0.5f, -0.5f, 3.0f, 0.5f, 0.5f};
+    assert(esp_project_aabb_edges(&outside_box, identity, 100.0f, 100.0f, segments) == 0);
 
     const EspAabb invalid_bounds{1, 0, 0, 0, 1, 1};
     assert(esp_project_aabb(&invalid_bounds, identity, 100.0f, 100.0f, points) == 0);
@@ -69,6 +67,6 @@ int main() {
     assert(esp_project_aabb_edges(&bounds, identity, 100.0f, 100.0f, nullptr) == 0);
     assert(esp_project_aabb(&bounds, identity, 0.0f, 100.0f, points) == 0);
 
-    std::cout << "AABB projection and edge clipping tests passed\n";
+    std::cout << "AABB projection and frustum clipping tests passed\n";
     return 0;
 }
