@@ -6,8 +6,21 @@ on:
     branches: [ main ]
 
 jobs:
+  host-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile geometry tests
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Werror \
+            src/main/cpp/esp_geometry.cpp tests/esp_geometry_test.cpp \
+            -o esp_geometry_test
+      - name: Run geometry tests
+        run: ./esp_geometry_test
+
   build:
     runs-on: ubuntu-latest
+    needs: host-tests
     steps:
       - uses: actions/checkout@v4
       - name: Set up Android SDK
