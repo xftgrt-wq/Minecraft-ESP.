@@ -3,6 +3,7 @@ project(MinecraftESP LANGUAGES CXX)
 
 add_library(minecraft_esp SHARED
     src/main/cpp/native-lib.cpp
+    src/main/cpp/esp_geometry.cpp
 )
 
 target_compile_features(minecraft_esp PRIVATE cxx_std_17)
