@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Compile geometry tests
         run: |
-          c++ -std=c++17 -Wall -Wextra -Werror \
+          c++ -std=c++17 -Wall -Wextra -Werror -Isrc/main/cpp \
             src/main/cpp/esp_geometry.cpp tests/esp_geometry_test.cpp \
             -o esp_geometry_test
       - name: Run geometry tests
