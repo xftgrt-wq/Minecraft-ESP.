@@ -5,6 +5,10 @@
 #include <pl/memory/Signature.hpp>
 
 #include <algorithm>
+#include <array>
+#include <cstdio>
+#include <cstring>
+#include <cstdint>
 #include <atomic>
 #include <cmath>
 #include <filesystem>
@@ -20,6 +24,52 @@ std::atomic_bool g_moduleEnabled{false};
 std::atomic_bool g_playersEnabled{true};
 std::atomic_bool g_itemsEnabled{true};
 std::atomic_bool g_moduleRegistered{false};
+
+struct SignatureScanResult {
+    std::size_t matches{};
+    std::uintptr_t first{};
+};
+
+SignatureScanResult countExecutableSignatureMatches() {
+    constexpr std::array<std::uint8_t, 40> pattern{
+        0xFF, 0x83, 0x07, 0xD1, 0xFD, 0x7B, 0x18, 0xA9,
+        0xFC, 0x6F, 0x19, 0xA9, 0xFA, 0x67, 0x1A, 0xA9,
+        0xF8, 0x5F, 0x1B, 0xA9, 0xF6, 0x57, 0x1C, 0xA9,
+        0xF4, 0x4F, 0x1D, 0xA9, 0xFD, 0x03, 0x06, 0x91,
+        0x48, 0xD0, 0x3B, 0xD5, 0x39, 0x00, 0x01, 0xD0
+    };
+
+    SignatureScanResult result{};
+    FILE* maps = std::fopen("/proc/self/maps", "r");
+    if (!maps) return result;
+
+    char line[4096];
+    while (std::fgets(line, sizeof(line), maps)) {
+        unsigned long long start = 0;
+        unsigned long long end = 0;
+        char permissions[5]{};
+        if (std::strstr(line, "libminecraftpe.so") == nullptr ||
+            std::sscanf(line, "%llx-%llx %4s", &start, &end, permissions) != 3 ||
+            permissions[0] != 'r' || permissions[2] != 'x' ||
+            end <= start || end - start < pattern.size()) {
+            continue;
+        }
+
+        const auto* bytes = reinterpret_cast<const std::uint8_t*>(
+            static_cast<std::uintptr_t>(start));
+        const std::size_t length = static_cast<std::size_t>(end - start);
+        for (std::size_t offset = 0; offset <= length - pattern.size(); ++offset) {
+            if (std::memcmp(bytes + offset, pattern.data(), pattern.size()) == 0) {
+                ++result.matches;
+                if (result.first == 0) {
+                    result.first = static_cast<std::uintptr_t>(start) + offset;
+                }
+            }
+        }
+    }
+    std::fclose(maps);
+    return result;
+}
 
 bool parse_bool(std::string_view value, bool fallback) {
     if (value == "true" || value == "1" || value == "on") return true;
@@ -62,9 +112,17 @@ public:
         const auto taaCandidate = pl::memory::resolveSignature(
             kTaaCallbackSignature, "libminecraftpe.so");
         if (taaCandidate) {
+            const auto scan = countExecutableSignatureMatches();
             mSelf->getLogger().info(
-                "TAA callback signature candidate resolved at {:#x}; hook remains disabled",
-                taaCandidate);
+                "TAA signature resolver candidate: {:#x}; independent executable-map matches: {}; first match: {:#x}",
+                taaCandidate, scan.matches, scan.first);
+            if (scan.matches == 1 && scan.first == taaCandidate) {
+                mSelf->getLogger().info(
+                    "TAA signature is unique in executable mappings; hook remains disabled pending ABI/lifetime validation");
+            } else {
+                mSelf->getLogger().warn(
+                    "TAA signature uniqueness check failed or was inconclusive; hook remains disabled");
+            }
         } else {
             mSelf->getLogger().warn(
                 "TAA callback signature candidate was not found in libminecraftpe.so");
