@@ -33,6 +33,22 @@ int main() {
     assert(std::fabs(points[0].y - 75.0f) < 1.0e-5f);
     assert(esp_project_aabb_edges(&bounds, identity, 100.0f, 100.0f, segments) == 12);
 
+    // Explicit column-major affine transform: scale X/Y and translate
+    // before viewport mapping. This checks matrix indexing beyond identity.
+    const float affine[16] = {
+        0.5f, 0, 0, 0,
+        0, 0.25f, 0, 0,
+        0, 0, 1, 0,
+        0.25f, -0.25f, 0, 1
+    };
+    const EspAabb affine_box{-1, -1, 0, 1, 1, 0};
+    assert(esp_project_aabb(&affine_box, affine, 200.0f, 100.0f, points) == 8);
+    assert(std::fabs(points[0].x - 75.0f) < 1.0e-5f);
+    assert(std::fabs(points[0].y - 62.5f) < 1.0e-5f);
+    assert(std::fabs(points[7].x - 175.0f) < 1.0e-5f);
+    assert(std::fabs(points[7].y - 37.5f) < 1.0e-5f);
+    assert(esp_project_aabb_edges(&affine_box, affine, 200.0f, 100.0f, segments) == 12);
+
     const float negative_w[16] = {
         -1, 0, 0, 0,
          0,-1, 0, 0,
