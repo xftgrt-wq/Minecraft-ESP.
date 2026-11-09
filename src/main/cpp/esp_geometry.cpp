@@ -23,13 +23,17 @@ bool finite(const Vec4& v) {
 
 bool valid_input(const EspAabb* b, const float* m, float width,
                  float height, const void* out) {
-    return b && m && out && std::isfinite(width) && std::isfinite(height) &&
-           width > 0.0f && height > 0.0f &&
-           std::isfinite(b->min_x) && std::isfinite(b->min_y) &&
-           std::isfinite(b->min_z) && std::isfinite(b->max_x) &&
-           std::isfinite(b->max_y) && std::isfinite(b->max_z) &&
-           b->min_x <= b->max_x && b->min_y <= b->max_y &&
-           b->min_z <= b->max_z;
+    if (!b || !m || !out || !std::isfinite(width) || !std::isfinite(height) ||
+        width <= 0.0f || height <= 0.0f ||
+        !std::isfinite(b->min_x) || !std::isfinite(b->min_y) ||
+        !std::isfinite(b->min_z) || !std::isfinite(b->max_x) ||
+        !std::isfinite(b->max_y) || !std::isfinite(b->max_z) ||
+        b->min_x > b->max_x || b->min_y > b->max_y ||
+        b->min_z > b->max_z)
+        return false;
+    for (int i = 0; i < 16; ++i)
+        if (!std::isfinite(m[i])) return false;
+    return true;
 }
 
 void make_corners(const EspAabb& b, Vec4* out, const float* m) {
@@ -50,6 +54,49 @@ EspScreenPoint to_screen(const Vec4& clip, float width, float height) {
     const float ndc_z = clip.z * inv_w;
     return {(ndc_x + 1.0f) * 0.5f * width,
             (1.0f - ndc_y) * 0.5f * height, ndc_z, 1};
+}
+
+float interpolate(float a, float b, float t) {
+    return a + (b - a) * t;
+}
+
+Vec4 interpolate(const Vec4& a, const Vec4& b, float t) {
+    return {interpolate(a.x, b.x, t), interpolate(a.y, b.y, t),
+            interpolate(a.z, b.z, t), interpolate(a.w, b.w, t)};
+}
+
+// Clip a homogeneous line segment to the OpenGL clip volume. The first
+// half-space is w >= epsilon; the remaining six are -w <= x,y,z <= w.
+bool clip_to_frustum(Vec4& a, Vec4& b) {
+    if (!finite(a) || !finite(b)) return false;
+    const float fa[7] = {
+        a.w - kWEpsilon, a.x + a.w, a.w - a.x,
+        a.y + a.w, a.w - a.y, a.z + a.w, a.w - a.z
+    };
+    const float fb[7] = {
+        b.w - kWEpsilon, b.x + b.w, b.w - b.x,
+        b.y + b.w, b.w - b.y, b.z + b.w, b.w - b.z
+    };
+    float t_enter = 0.0f;
+    float t_exit = 1.0f;
+    for (int i = 0; i < 7; ++i) {
+        if (!std::isfinite(fa[i]) || !std::isfinite(fb[i]) ||
+            (fa[i] < 0.0f && fb[i] < 0.0f))
+            return false;
+        if (fa[i] < 0.0f || fb[i] < 0.0f) {
+            const float denominator = fa[i] - fb[i];
+            if (std::fabs(denominator) <= kWEpsilon) return false;
+            const float t = fa[i] / denominator;
+            if (fa[i] < 0.0f) t_enter = t > t_enter ? t : t_enter;
+            else t_exit = t < t_exit ? t : t_exit;
+            if (t_enter > t_exit) return false;
+        }
+    }
+    const Vec4 original_a = a;
+    const Vec4 original_b = b;
+    a = interpolate(original_a, original_b, t_enter);
+    b = interpolate(original_a, original_b, t_exit);
+    return finite(a) && finite(b) && a.w > 0.0f && b.w > 0.0f;
 }
 }
 
@@ -101,30 +148,9 @@ extern "C" int esp_project_aabb_edges(
         out[i] = {};
         Vec4 a = corners[edges[i].a];
         Vec4 c = corners[edges[i].b];
-        if (!finite(a) || !finite(c) ||
-            (a.w <= kWEpsilon && c.w <= kWEpsilon))
+        if (!clip_to_frustum(a, c))
             continue;
 
-        if (a.w <= kWEpsilon || c.w <= kWEpsilon) {
-            const float denominator = c.w - a.w;
-            if (!std::isfinite(denominator) ||
-                std::fabs(denominator) <= kWEpsilon)
-                continue;
-            const float t = (kWEpsilon - a.w) / denominator;
-            Vec4 clipped{
-                a.x + (c.x - a.x) * t,
-                a.y + (c.y - a.y) * t,
-                a.z + (c.z - a.z) * t,
-                kWEpsilon
-            };
-            if (a.w <= kWEpsilon) a = clipped;
-            else c = clipped;
-        }
-
-        // Move the clipped endpoint a tiny amount into the visible half-space
-        // to avoid division by a value exactly at the epsilon threshold.
-        if (a.w <= kWEpsilon) a.w = kWEpsilon * 1.001f;
-        if (c.w <= kWEpsilon) c.w = kWEpsilon * 1.001f;
         const EspScreenPoint p1 = to_screen(a, width, height);
         const EspScreenPoint p2 = to_screen(c, width, height);
         if (!std::isfinite(p1.x) || !std::isfinite(p1.y) ||
