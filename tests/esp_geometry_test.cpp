@@ -123,8 +123,12 @@ int main() {
     assert(esp_project_aabb_edges(&beyond_far, identity, 100.0f, 100.0f, segments) == 0);
 
     const EspAabb invalid_bounds{1, 0, 0, 0, 1, 1};
+    for (auto& point : points) point = {9.0f, 9.0f, 9.0f, 1};
+    for (auto& segment : segments) segment = {9, 9, 9, 9, 9, 9, 1};
     assert(esp_project_aabb(&invalid_bounds, identity, 100.0f, 100.0f, points) == 0);
+    for (const auto& point : points) assert(point.valid == 0);
     assert(esp_project_aabb_edges(&invalid_bounds, identity, 100.0f, 100.0f, segments) == 0);
+    for (const auto& segment : segments) assert(segment.valid == 0);
     assert(esp_project_aabb(nullptr, identity, 100.0f, 100.0f, points) == 0);
     assert(esp_project_aabb_edges(&bounds, identity, 100.0f, 100.0f, nullptr) == 0);
     assert(esp_project_aabb(&bounds, identity, 0.0f, 100.0f, points) == 0);
