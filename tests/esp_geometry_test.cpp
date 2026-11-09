@@ -82,6 +82,38 @@ int main() {
         assert(segment.y2 >= 0.0f && segment.y2 <= 100.0f);
     }
 
+    // Top and bottom clip-plane crossings retain only visible edge pieces.
+    const EspAabb top_crossing{-0.5f, 0.0f, -0.5f, 0.5f, 2.0f, 0.5f};
+    assert(esp_project_aabb_edges(&top_crossing, identity, 100.0f, 100.0f, segments) == 8);
+    for (const auto& segment : segments) {
+        if (!segment.valid) continue;
+        assert(segment.x1 >= 0.0f && segment.x1 <= 100.0f);
+        assert(segment.x2 >= 0.0f && segment.x2 <= 100.0f);
+        assert(segment.y1 >= 0.0f && segment.y1 <= 100.0f);
+        assert(segment.y2 >= 0.0f && segment.y2 <= 100.0f);
+    }
+
+    const EspAabb bottom_crossing{-0.5f, -2.0f, -0.5f, 0.5f, 0.0f, 0.5f};
+    assert(esp_project_aabb_edges(&bottom_crossing, identity, 100.0f, 100.0f, segments) == 8);
+    for (const auto& segment : segments) {
+        if (!segment.valid) continue;
+        assert(segment.x1 >= 0.0f && segment.x1 <= 100.0f);
+        assert(segment.x2 >= 0.0f && segment.x2 <= 100.0f);
+        assert(segment.y1 >= 0.0f && segment.y1 <= 100.0f);
+        assert(segment.y2 >= 0.0f && segment.y2 <= 100.0f);
+    }
+
+    // OpenGL near plane is z=-w. Edges crossing it remain clipped to the viewport.
+    const EspAabb near_crossing{-0.5f, -0.5f, -2.0f, 0.5f, 0.5f, 0.0f};
+    assert(esp_project_aabb_edges(&near_crossing, identity, 100.0f, 100.0f, segments) == 8);
+    for (const auto& segment : segments) {
+        if (!segment.valid) continue;
+        assert(segment.x1 >= 0.0f && segment.x1 <= 100.0f);
+        assert(segment.x2 >= 0.0f && segment.x2 <= 100.0f);
+        assert(segment.y1 >= 0.0f && segment.y1 <= 100.0f);
+        assert(segment.y2 >= 0.0f && segment.y2 <= 100.0f);
+    }
+
     const EspAabb outside_box{2.0f, -0.5f, -0.5f, 3.0f, 0.5f, 0.5f};
     assert(esp_project_aabb_edges(&outside_box, identity, 100.0f, 100.0f, segments) == 0);
     // OpenGL far plane: visible face plus four edges clipped at z=w.
