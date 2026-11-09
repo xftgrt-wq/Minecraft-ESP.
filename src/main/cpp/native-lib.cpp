@@ -184,35 +184,57 @@ void submitDiagnosticHud() {
         return;
     }
 
-    // Use ordinary positive pixel coordinates and a filled background.
-    // This avoids relying on the launcher's special center/right alignment
-    // sentinels while testing the native-to-HUD command bridge.
-    const std::array<pl::modmenu::DrawCommand, 2> commands{{
+    // Query the actual HUD canvas size and place a large, unmistakable
+    // diagnostic panel in its center. Fall back to visible top-left pixels
+    // until the Java overlay reports its first measured frame.
+    const auto surface = pl::modmenu::getHudSurfaceSize();
+    const float panelWidth = 420.0f;
+    const float panelHeight = 88.0f;
+    const float x = surface.width > panelWidth
+        ? (surface.width - panelWidth) * 0.5f : 24.0f;
+    const float y = surface.height > panelHeight
+        ? (surface.height - panelHeight) * 0.5f : 96.0f;
+
+    const std::array<pl::modmenu::DrawCommand, 3> commands{{
         {
             .type = pl::modmenu::DrawCommandType::RectFilled,
-            .x = 16.0f,
-            .y = 24.0f,
-            .w = 280.0f,
-            .h = 44.0f,
+            .x = x,
+            .y = y,
+            .w = panelWidth,
+            .h = panelHeight,
             .x3 = 0.0f,
             .y3 = 0.0f,
-            .color = 0xE0202020u,
+            .color = 0xF0000000u,
             .size = 0.0f,
             .text = {},
             .fontId = {},
             .imageId = {}
         },
         {
+            .type = pl::modmenu::DrawCommandType::Rect,
+            .x = x,
+            .y = y,
+            .w = panelWidth,
+            .h = panelHeight,
+            .x3 = 0.0f,
+            .y3 = 0.0f,
+            .color = 0xFFFF3030u,
+            .size = 3.0f,
+            .text = {},
+            .fontId = {},
+            .imageId = {}
+        },
+        {
             .type = pl::modmenu::DrawCommandType::Text,
-            .x = 26.0f,
-            .y = 53.0f,
-            .w = 0.0f,
-            .h = 0.0f,
+            .x = x,
+            .y = y,
+            .w = panelWidth,
+            .h = panelHeight,
             .x3 = 0.0f,
             .y3 = 0.0f,
             .color = 0xFFFFFFFFu,
-            .size = 17.0f,
-            .text = "ESP HUD PIPELINE OK",
+            .size = 24.0f,
+            .text = "ESP HUD TEST - BUILD 124",
             .fontId = {},
             .imageId = {}
         }
@@ -313,7 +335,7 @@ public:
         const bool registered = builder
             .modId(mSelf->getId())
             .description("3D entity outlines. Runtime entity and camera integration is not active yet.")
-            .defaultEnabled(false)
+            .defaultEnabled(true)
             .config("players", "Players", pl::modmenu::ConfigType::Toggle, "true")
             .config("dropped_items", "Dropped items", pl::modmenu::ConfigType::Toggle, "true")
             .onToggle([this](std::string_view moduleId, bool enabled) {
@@ -347,6 +369,15 @@ public:
             return false;
         }
         mSelf->getLogger().info("3D ESP toggle registered in LeviLauncher Mod Menu");
+        // Submit once immediately after registration as well as from the
+        // toggle callback. This avoids losing the first diagnostic batch if
+        // the launcher creates the HUD view slightly later in its lifecycle.
+        g_moduleEnabled.store(true, std::memory_order_release);
+        submitDiagnosticHud();
+        const auto hudSize = pl::modmenu::getHudSurfaceSize();
+        mSelf->getLogger().info(
+            "HUD diagnostic submitted after registration; surface={}x{}",
+            hudSize.width, hudSize.height);
         return true;
     }
 
