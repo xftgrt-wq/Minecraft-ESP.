@@ -67,14 +67,14 @@ Tests cover identity projection, camera-plane crossings, side/far frustum clippi
 
 ## CI status
 
-A verified Android ARM64 build and geometry-test run succeeded:
-https://github.com/xftgrt-wq/Minecraft-ESP./actions/runs/42669487644
+Host geometry tests with AddressSanitizer and UndefinedBehaviorSanitizer passed in the recent CI runs. The first Preloader-linked Android build compiled the Preloader dependency but exposed a missing-field initializer warning in the new HUD command. The command initializer has since been expanded to include all fields; the corrected Android build is queued here:
+https://github.com/xftgrt-wq/Minecraft-ESP./actions/runs/42671490114
 
-The workflow uses Android NDK 27.2.12479018 and ABI `arm64-v8a`. Host geometry tests have also passed after the expanded far-plane/non-finite test cases. A newer workflow revision is adding AddressSanitizer and UndefinedBehaviorSanitizer to the host tests; check Actions for its final result.
+Do not treat the earlier NDK 27 build artifact as a verified Preloader integration build.
 
 ## Current status — not a working ESP
 
-This repository is still a native build prototype, **not a working in-game ESP**. No player/item enumeration, live entity AABB retrieval, supported render hook, actual line submission, through-wall rendering, or toggle UI is implemented. The Android artifact currently contains the geometry module and a JNI load-log stub; it must not be mistaken for an installable ESP.
+This repository is still a native build prototype, **not a working in-game ESP**. No player/item enumeration, live entity AABB retrieval, supported render hook, actual line submission, through-wall rendering, or toggle UI is implemented. The Preloader lifecycle and HUD bridge are implemented in source, but the latest corrected Android artifact has not yet completed CI. Even after a successful build, it must not be mistaken for a working ESP until runtime entity and camera integration is implemented.
 
 A working implementation still requires verified runtime access to:
 1. the current world and entity/item collections;
