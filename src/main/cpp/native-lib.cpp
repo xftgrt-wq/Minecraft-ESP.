@@ -28,7 +28,10 @@ std::atomic_bool g_moduleRegistered{false};
 struct SignatureScanResult {
     std::size_t matches{};
     std::uintptr_t first{};
+    std::uintptr_t firstFileOffset{};
 };
+
+constexpr std::uintptr_t kExpectedTaaFileOffset = 0x1290c4a8u;
 
 SignatureScanResult countExecutableSignatureMatches() {
     constexpr std::array<std::uint8_t, 40> pattern{
@@ -47,9 +50,10 @@ SignatureScanResult countExecutableSignatureMatches() {
     while (std::fgets(line, sizeof(line), maps)) {
         unsigned long long start = 0;
         unsigned long long end = 0;
+        unsigned long long fileOffset = 0;
         char permissions[5]{};
         if (std::strstr(line, "libminecraftpe.so") == nullptr ||
-            std::sscanf(line, "%llx-%llx %4s", &start, &end, permissions) != 3 ||
+            std::sscanf(line, "%llx-%llx %4s %llx", &start, &end, permissions, &fileOffset) != 4 ||
             permissions[0] != 'r' || permissions[2] != 'x' ||
             end <= start || end - start < pattern.size()) {
             continue;
@@ -63,6 +67,8 @@ SignatureScanResult countExecutableSignatureMatches() {
                 ++result.matches;
                 if (result.first == 0) {
                     result.first = static_cast<std::uintptr_t>(start) + offset;
+                    result.firstFileOffset =
+                        static_cast<std::uintptr_t>(fileOffset) + offset;
                 }
             }
         }
@@ -114,14 +120,16 @@ public:
         if (taaCandidate) {
             const auto scan = countExecutableSignatureMatches();
             mSelf->getLogger().info(
-                "TAA signature resolver candidate: {:#x}; independent executable-map matches: {}; first match: {:#x}",
-                taaCandidate, scan.matches, scan.first);
-            if (scan.matches == 1 && scan.first == taaCandidate) {
+                "TAA signature resolver candidate: {:#x}; independent executable-map matches: {}; first match: {:#x}; file offset: {:#x}; expected offset: {:#x}",
+                taaCandidate, scan.matches, scan.first, scan.firstFileOffset,
+                kExpectedTaaFileOffset);
+            if (scan.matches == 1 && scan.first == taaCandidate &&
+                scan.firstFileOffset == kExpectedTaaFileOffset) {
                 mSelf->getLogger().info(
-                    "TAA signature is unique in executable mappings; hook remains disabled pending ABI/lifetime validation");
+                    "TAA signature is unique and matches expected file offset; hook remains disabled pending ABI/lifetime validation");
             } else {
                 mSelf->getLogger().warn(
-                    "TAA signature uniqueness check failed or was inconclusive; hook remains disabled");
+                    "TAA signature count/address/file-offset check failed or was inconclusive; hook remains disabled");
             }
         } else {
             mSelf->getLogger().warn(
