@@ -3,18 +3,15 @@
 #include "esp_geometry.h"
 
 #include <cstddef>
-#include <cstdint>
 
-enum class EspOverlayKind : std::uint8_t {
-    Player,
-    DroppedItem
-};
+// Submits one complete overlay frame to LeviLauncher's HUD renderer.
+// Player AABB edges are red; dropped-item AABB edges are green.
+// Pass screen-space segments returned by esp_project_aabb_edges().
+bool esp_overlay_submit_frame(const EspScreenSegment* player_segments,
+                              std::size_t player_count,
+                              const EspScreenSegment* item_segments,
+                              std::size_t item_count,
+                              float thickness = 2.0f);
 
-// Submit projected screen-space segments to LeviLauncher's HUD overlay.
-// Player outlines are red; dropped-item outlines are green.
-bool esp_overlay_submit_segments(const EspScreenSegment* segments,
-                                 std::size_t count,
-                                 EspOverlayKind kind,
-                                 float thickness = 2.0f);
-
+// Clears the module's current HUD draw commands.
 void esp_overlay_clear();
