@@ -17,6 +17,8 @@
 #include <vector>
 #include <string>
 #include <string_view>
+#include <link.h>
+#include <elf.h>
 
 namespace {
 constexpr std::string_view kModuleId = "minecraft_esp.overlay";
@@ -105,6 +107,71 @@ bool isExecutableGameAddress(std::uintptr_t candidate) {
     return executable;
 }
 
+struct GameModuleIdentity {
+    bool found{};
+    std::uintptr_t loadBase{};
+    char path[256]{};
+    char buildId[65]{};
+};
+
+std::size_t align_note(std::size_t value) {
+    return (value + 3u) & ~std::size_t(3u);
+}
+
+int findGameModuleIdentity(dl_phdr_info* info, std::size_t, void* opaque) {
+    if (!info || !opaque || !info->dlpi_name ||
+        std::strstr(info->dlpi_name, "libminecraftpe.so") == nullptr) {
+        return 0;
+    }
+
+    auto& identity = *static_cast<GameModuleIdentity*>(opaque);
+    identity.found = true;
+    identity.loadBase = static_cast<std::uintptr_t>(info->dlpi_addr);
+    std::snprintf(identity.path, sizeof(identity.path), "%s", info->dlpi_name);
+
+    for (ElfW(Half) i = 0; i < info->dlpi_phnum; ++i) {
+        const auto& header = info->dlpi_phdr[i];
+        if (header.p_type != PT_NOTE || header.p_memsz < sizeof(ElfW(Nhdr))) {
+            continue;
+        }
+
+        const auto* cursor = reinterpret_cast<const std::uint8_t*>(
+            identity.loadBase + header.p_vaddr);
+        std::size_t remaining = static_cast<std::size_t>(header.p_memsz);
+        while (remaining >= sizeof(ElfW(Nhdr))) {
+            ElfW(Nhdr) note{};
+            std::memcpy(&note, cursor, sizeof(note));
+            cursor += sizeof(note);
+            remaining -= sizeof(note);
+
+            const std::size_t nameSize = align_note(note.n_namesz);
+            const std::size_t descSize = align_note(note.n_descsz);
+            if (nameSize > remaining || descSize > remaining - nameSize) {
+                break;
+            }
+
+            const auto* name = cursor;
+            const auto* desc = cursor + nameSize;
+            if (note.n_type == NT_GNU_BUILD_ID && note.n_namesz >= 3 &&
+                std::memcmp(name, "GNU", 3) == 0 && note.n_descsz > 0) {
+                const std::size_t bytes = std::min<std::size_t>(
+                    note.n_descsz, (sizeof(identity.buildId) - 1) / 2);
+                for (std::size_t j = 0; j < bytes; ++j) {
+                    std::snprintf(identity.buildId + j * 2,
+                                  sizeof(identity.buildId) - j * 2,
+                                  "%02x", desc[j]);
+                }
+                return 1;
+            }
+
+            const std::size_t consumed = nameSize + descSize;
+            cursor += consumed;
+            remaining -= consumed;
+        }
+    }
+    return 1;
+}
+
 bool parse_bool(std::string_view value, bool fallback) {
     if (value == "true" || value == "1" || value == "on") return true;
     if (value == "false" || value == "0" || value == "off") return false;
@@ -136,6 +203,19 @@ public:
 
     bool enable() {
         if (!mSelf) return false;
+
+        // Read-only identity diagnostic; no game objects are dereferenced.
+        GameModuleIdentity gameIdentity{};
+        dl_iterate_phdr(findGameModuleIdentity, &gameIdentity);
+        if (gameIdentity.found) {
+            mSelf->getLogger().info(
+                "Game ELF identity: path='{}' load_base={:#x} build_id='{}'",
+                gameIdentity.path, gameIdentity.loadBase,
+                gameIdentity.buildId[0] ? gameIdentity.buildId : "missing");
+        } else {
+            mSelf->getLogger().warn(
+                "Game ELF identity: libminecraftpe.so is not present in dl_iterate_phdr");
+        }
 
         // Diagnostic only: resolve the statically unique TAA callback candidate
         // in the live game module. This deliberately does not install a hook.
