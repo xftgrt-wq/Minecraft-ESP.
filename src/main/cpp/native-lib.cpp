@@ -3,6 +3,7 @@
 #include <pl/Mod.hpp>
 #include <pl/ModMenu.hpp>
 #include <pl/memory/Signature.hpp>
+#include <pl/memory/Vtable.hpp>
 
 #include <algorithm>
 #include <array>
@@ -77,6 +78,33 @@ SignatureScanResult countExecutableSignatureMatches() {
     return result;
 }
 
+bool isExecutableGameAddress(std::uintptr_t candidate) {
+    if (candidate == 0) return false;
+    FILE* maps = std::fopen("/proc/self/maps", "r");
+    if (!maps) return false;
+
+    bool executable = false;
+    char line[4096];
+    while (std::fgets(line, sizeof(line), maps)) {
+        unsigned long long start = 0;
+        unsigned long long end = 0;
+        char permissions[5]{};
+        if (std::strstr(line, "libminecraftpe.so") == nullptr ||
+            std::sscanf(line, "%llx-%llx %4s", &start, &end, permissions) != 3 ||
+            permissions[0] != 'r' || permissions[2] != 'x' ||
+            end <= start) {
+            continue;
+        }
+        if (candidate >= static_cast<std::uintptr_t>(start) &&
+            candidate < static_cast<std::uintptr_t>(end)) {
+            executable = true;
+            break;
+        }
+    }
+    std::fclose(maps);
+    return executable;
+}
+
 bool parse_bool(std::string_view value, bool fallback) {
     if (value == "true" || value == "1" || value == "on") return true;
     if (value == "false" || value == "0" || value == "off") return false;
@@ -134,6 +162,29 @@ public:
         } else {
             mSelf->getLogger().warn(
                 "TAA callback signature candidate was not found in libminecraftpe.so");
+        }
+
+        // Exact-version static research surfaced two RTTI/vtable candidates in a
+        // public 1.26.33.1 ARM64 analysis. Treat them as diagnostics only: do not
+        // dereference returned game pointers or install hooks based on slot matches.
+        const auto localPlayerAccessor = pl::memory::resolveVtableFunction(
+            "14ClientInstance", 31, "libminecraftpe.so");
+        const auto playerRenderEntry = pl::memory::resolveVtableFunction(
+            "18LivePlayerRenderer", 17, "libminecraftpe.so");
+        const bool localPlayerAccessorExecutable =
+            isExecutableGameAddress(localPlayerAccessor);
+        const bool playerRenderEntryExecutable =
+            isExecutableGameAddress(playerRenderEntry);
+        mSelf->getLogger().info(
+            "RTTI diagnostics: ClientInstance slot 31={:#x} executable={}; LivePlayerRenderer slot 17={:#x} executable={}",
+            localPlayerAccessor, localPlayerAccessorExecutable,
+            playerRenderEntry, playerRenderEntryExecutable);
+        if (!localPlayerAccessorExecutable || !playerRenderEntryExecutable) {
+            mSelf->getLogger().warn(
+                "One or more RTTI/vtable candidates are absent or non-executable; no game hook was installed");
+        } else {
+            mSelf->getLogger().info(
+                "RTTI/vtable candidates resolve to executable game mappings; ABI, slot semantics, and pointer lifetime remain unverified; hooks remain disabled");
         }
 
         pl::modmenu::ModuleBuilder builder(std::string(kModuleId), "3D ESP");
