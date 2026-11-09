@@ -58,8 +58,6 @@ int main() {
     // fully off-screen edges are discarded.
     const EspAabb side_crossing{-2.0f, -0.5f, -0.5f, 0.0f, 0.5f, 0.5f};
     assert(esp_project_aabb_edges(&side_crossing, identity, 100.0f, 100.0f, segments) == 8);
-    const EspAabb outside_box{2.0f, -0.5f, -0.5f, 3.0f, 0.5f, 0.5f};
-    assert(esp_project_aabb_edges(&outside_box, identity, 100.0f, 100.0f, segments) == 0);
     for (const auto& segment : segments) {
         if (!segment.valid) continue;
         assert(segment.x1 >= 0.0f && segment.x1 <= 100.0f);
@@ -68,6 +66,8 @@ int main() {
         assert(segment.y2 >= 0.0f && segment.y2 <= 100.0f);
     }
 
+    const EspAabb outside_box{2.0f, -0.5f, -0.5f, 3.0f, 0.5f, 0.5f};
+    assert(esp_project_aabb_edges(&outside_box, identity, 100.0f, 100.0f, segments) == 0);
     // OpenGL far plane: visible face plus four edges clipped at z=w.
     const EspAabb far_crossing{-0.5f, -0.5f, 0.5f, 0.5f, 0.5f, 2.0f};
     assert(esp_project_aabb_edges(&far_crossing, identity, 100.0f, 100.0f, segments) == 8);
