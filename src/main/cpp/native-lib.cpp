@@ -2,6 +2,7 @@
 
 #include <pl/Mod.hpp>
 #include <pl/ModMenu.hpp>
+#include <pl/memory/Signature.hpp>
 
 #include <algorithm>
 #include <atomic>
@@ -50,6 +51,25 @@ public:
     }
 
     bool enable() {
+        if (!mSelf) return false;
+
+        // Diagnostic only: resolve the statically unique TAA callback candidate
+        // in the live game module. This deliberately does not install a hook.
+        constexpr std::string_view kTaaCallbackSignature =
+            "FF 83 07 D1 FD 7B 18 A9 FC 6F 19 A9 FA 67 1A A9 "
+            "F8 5F 1B A9 F6 57 1C A9 F4 4F 1D A9 FD 03 06 91 "
+            "48 D0 3B D5 39 00 01 D0";
+        const auto taaCandidate = pl::memory::resolveSignature(
+            kTaaCallbackSignature, "libminecraftpe.so");
+        if (taaCandidate) {
+            mSelf->getLogger().info(
+                "TAA callback signature candidate resolved at {:#x}; hook remains disabled",
+                taaCandidate);
+        } else {
+            mSelf->getLogger().warn(
+                "TAA callback signature candidate was not found in libminecraftpe.so");
+        }
+
         pl::modmenu::ModuleBuilder builder(std::string(kModuleId), "3D ESP");
         const bool registered = builder
             .modId(mSelf->getId())
