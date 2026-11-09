@@ -22,6 +22,11 @@ struct EspScreenPoint {
     std::uint32_t valid;
 };
 
+struct EspAabbEdge { std::uint8_t a, b; };
+
+// Returns the 12 canonical box edges, indexed into the eight projected corners.
+ESP_API const EspAabbEdge* esp_aabb_edges();
+
 // Matrix is a column-major 4x4 matrix (OpenGL convention), multiplied by
 // column vectors: clip = view_projection * vec4(world, 1).
 ESP_API int esp_project_aabb(
