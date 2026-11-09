@@ -110,7 +110,12 @@ bool esp_overlay_submit_frame(const EspScreenSegment* playerSegments,
 
     constexpr std::size_t kMaxCommands = 4096;
     std::vector<pl::modmenu::DrawCommand> commands;
-    commands.reserve(std::min(playerCount + itemCount, kMaxCommands));
+    const std::size_t reserveCount =
+        playerCount >= kMaxCommands || itemCount >= kMaxCommands ||
+        playerCount > kMaxCommands - std::min(itemCount, kMaxCommands)
+            ? kMaxCommands
+            : playerCount + itemCount;
+    commands.reserve(reserveCount);
 
     const auto append = [&](const EspScreenSegment* segments,
                             std::size_t count,
