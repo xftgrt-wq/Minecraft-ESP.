@@ -132,6 +132,28 @@ int main() {
     assert(esp_project_aabb(nullptr, identity, 100.0f, 100.0f, points) == 0);
     assert(esp_project_aabb_edges(&bounds, identity, 100.0f, 100.0f, nullptr) == 0);
     assert(esp_project_aabb(&bounds, identity, 0.0f, 100.0f, points) == 0);
+    // Rejected calls must clear the previous frame's data whenever the
+    // output buffer is writable, including null bounds/matrix and bad viewport.
+    for (auto& point : points) point = {7.0f, 7.0f, 7.0f, 1};
+    assert(esp_project_aabb(nullptr, identity, 100.0f, 100.0f, points) == 0);
+    for (const auto& point : points) assert(point.valid == 0);
+    for (auto& point : points) point = {7.0f, 7.0f, 7.0f, 1};
+    assert(esp_project_aabb(&bounds, nullptr, 100.0f, 100.0f, points) == 0);
+    for (const auto& point : points) assert(point.valid == 0);
+    for (auto& point : points) point = {7.0f, 7.0f, 7.0f, 1};
+    assert(esp_project_aabb(&bounds, identity, -1.0f, 100.0f, points) == 0);
+    for (const auto& point : points) assert(point.valid == 0);
+
+    for (auto& segment : segments) segment = {7, 7, 7, 7, 7, 7, 1};
+    assert(esp_project_aabb_edges(nullptr, identity, 100.0f, 100.0f, segments) == 0);
+    for (const auto& segment : segments) assert(segment.valid == 0);
+    for (auto& segment : segments) segment = {7, 7, 7, 7, 7, 7, 1};
+    assert(esp_project_aabb_edges(&bounds, nullptr, 100.0f, 100.0f, segments) == 0);
+    for (const auto& segment : segments) assert(segment.valid == 0);
+    for (auto& segment : segments) segment = {7, 7, 7, 7, 7, 7, 1};
+    assert(esp_project_aabb_edges(&bounds, identity, 100.0f, -1.0f, segments) == 0);
+    for (const auto& segment : segments) assert(segment.valid == 0);
+
     const EspAabb nonfinite_bounds{
         -std::numeric_limits<float>::infinity(), -0.5f, -0.5f,
         0.5f, 0.5f, 0.5f
