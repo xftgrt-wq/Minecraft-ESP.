@@ -171,3 +171,7 @@ Detailed correction: [Hitbox helper string-key lookup](analysis/2026-11-10-hitbo
 ## Latest static-analysis note
 
 - [Hitbox string-table lookup: caller cross-references and lookup contract](analysis/2026-11-10-hitbox-string-table-callers-and-lookup-contract.md) — 24 direct callers were found; the helper behaves as a string-keyed hash lookup, not a numeric entity-ID lookup. The hitbox caller's key/value types remain unresolved. No runtime hooks were added.
+
+
+### Analysis correction (2026-11-10)
+- Corrected the interpretation of the generic string-table lookup call sites: the `0x09E3CD78` caller is in `NetworkMonitor_nativeUpdateNetworkStatus`, not a proven hitbox/entity path. See [the correction report](analysis/2026-11-10-string-table-caller-correction.md).
