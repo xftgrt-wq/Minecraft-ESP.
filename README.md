@@ -175,3 +175,7 @@ Detailed correction: [Hitbox helper string-key lookup](analysis/2026-11-10-hitbo
 
 ### Analysis correction (2026-11-10)
 - Corrected the interpretation of the generic string-table lookup call sites: the `0x09E3CD78` caller is in `NetworkMonitor_nativeUpdateNetworkStatus`, not a proven hitbox/entity path. See [the correction report](analysis/2026-11-10-string-table-caller-correction.md).
+
+
+### ECS / AABB discovery (2026-11-10)
+- Identified embedded EnTT ECS signatures for actor/player/item components, AABB shape data, and the `UpdateRenderPosSystem` read/write path. This is static evidence only; registry addresses and safe runtime layouts remain unverified. [Analysis report](analysis/2026-11-10-bedrock-ecs-aabb-render-position-discovery.md).
