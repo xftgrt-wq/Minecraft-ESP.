@@ -183,3 +183,7 @@ Detailed correction: [Hitbox helper string-key lookup](analysis/2026-11-10-hitbo
 
 ### ECS bounds and camera paths (2026-11-10)
 - Identified a player/minecart/shulker bounding-box writer, an AABB-aware liquid-physics path with optional item-actor flag, and camera/render-position ECS system signatures. Layouts, registry access, and camera matrices remain unverified. [Analysis report](analysis/2026-11-10-ecs-bounds-camera-paths.md).
+
+
+### Renderer view / camera API trace (2026-11-10)
+- Identified `LevelRendererCamera::render(BaseActorRenderContext&, const ViewRenderObject&, IClientInstance&)`, view-oriented render-pipeline types, and `CameraAPIComponent::get()` accessors. Matrix layout, callback/thread contract, and safe ECS access remain unresolved. [Analysis report](analysis/2026-11-10-renderer-view-and-camera-api-trace.md).
