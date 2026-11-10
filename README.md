@@ -159,3 +159,10 @@ No runtime hook was added; live ESP remains unimplemented.
 A re-read of the callee at `0x10d67694` shows bucket-count calculation and bucket-chain collision handling consistent with a hash-map lookup, not a paged ECS-storage lookup. The caller supplies an entity key and uses the mapped value's `+0xe8/+0xf0` fields as the Hitbox helper's three-float input. The concrete map value type and coordinate semantics remain unknown.
 
 Detailed correction: [Hitbox helper hash-map lookup](analysis/2026-11-10-hitbox-helper-hash-map-lookup-correction.md).
+
+
+### Critical correction: Hitbox helper lookup key
+
+A deeper disassembly of `0x10d67694` shows string-like key handling (small-string/heap representation, length comparison, byte comparison and hash-bucket collision traversal). The caller's `x22+0x50` argument must therefore not be called an entity handle. Earlier notes that described this as an entity-keyed or generation-aware lookup were incorrect. The mapped value's `+0xe8/+0xf0` fields remain unidentified and cannot yet be called world coordinates.
+
+Detailed correction: [Hitbox helper string-key lookup](analysis/2026-11-10-hitbox-helper-string-key-correction.md).
