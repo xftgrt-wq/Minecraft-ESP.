@@ -120,3 +120,10 @@ A follow-up disassembly of the CameraAimAssist-oriented view builder and its cal
 Detailed report: [AABB filtered-view iteration and callback boundary](analysis/2026-11-10-aabb-filtered-view-iteration-callback-boundary.md).
 
 Next target is the visitor callback implementation and its AABB field reads. No runtime hook was added; the module remains HUD-only and live ESP is still not implemented.
+
+
+### Visitor callback resolved
+
+The filtered-view visitor's concrete callable target is now identified at `0x9e4379c`. It validates multiple component references, reads a scalar from one component, processes 0x18-byte vector-like records with min/max and squared-distance calculations, and emits compact 0x34-byte candidate records. This confirms the path is a CameraAimAssist spatial candidate-selection pipeline, not a straightforward all-entity AABB enumerator. The exact component layouts and world-space semantics are still unknown.
+
+Detailed report: [CameraAimAssist visitor callback spatial trace](analysis/2026-11-10-camera-aimassist-visitor-callback-spatial-trace.md).
