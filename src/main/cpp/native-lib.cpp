@@ -404,9 +404,12 @@ bool esp_overlay_submit_aabbs(const EspAabb* playerBounds,
                                float viewportHeight,
                                float thickness) {
     constexpr std::size_t kMaxEntitiesPerKind = 256;
+    constexpr std::size_t kMaxEntitiesPerFrame = 341;
     if ((playerCount && !playerBounds) || (itemCount && !itemBounds) ||
         !viewProjection || playerCount > kMaxEntitiesPerKind ||
         itemCount > kMaxEntitiesPerKind ||
+        playerCount > kMaxEntitiesPerFrame ||
+        itemCount > kMaxEntitiesPerFrame - playerCount ||
         !std::isfinite(viewportWidth) || !std::isfinite(viewportHeight) ||
         viewportWidth <= 0.0f || viewportHeight <= 0.0f ||
         !std::isfinite(thickness) || thickness <= 0.0f ||
@@ -452,6 +455,9 @@ bool esp_overlay_submit_frame(const EspScreenSegment* playerSegments,
     }
 
     constexpr std::size_t kMaxCommands = 4096;
+    if (playerCount > kMaxCommands || itemCount > kMaxCommands - playerCount) {
+        return false;
+    }
     std::vector<pl::modmenu::DrawCommand> commands;
     const std::size_t reserveCount =
         playerCount >= kMaxCommands || itemCount >= kMaxCommands ||
@@ -465,9 +471,7 @@ bool esp_overlay_submit_frame(const EspScreenSegment* playerSegments,
                             bool enabled,
                             std::uint32_t color) {
         if (!enabled || !segments || commands.size() >= kMaxCommands) return;
-        const std::size_t available = kMaxCommands - commands.size();
-        const std::size_t limit = std::min(count, available);
-        for (std::size_t i = 0; i < limit; ++i) {
+        for (std::size_t i = 0; i < count; ++i) {
             const auto& segment = segments[i];
             if (!segment.valid ||
                 !std::isfinite(segment.x1) || !std::isfinite(segment.y1) ||
