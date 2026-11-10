@@ -166,3 +166,8 @@ Detailed correction: [Hitbox helper hash-map lookup](analysis/2026-11-10-hitbox-
 A deeper disassembly of `0x10d67694` shows string-like key handling (small-string/heap representation, length comparison, byte comparison and hash-bucket collision traversal). The caller's `x22+0x50` argument must therefore not be called an entity handle. Earlier notes that described this as an entity-keyed or generation-aware lookup were incorrect. The mapped value's `+0xe8/+0xf0` fields remain unidentified and cannot yet be called world coordinates.
 
 Detailed correction: [Hitbox helper string-key lookup](analysis/2026-11-10-hitbox-helper-string-key-correction.md).
+
+
+## Latest static-analysis note
+
+- [Hitbox string-table lookup: caller cross-references and lookup contract](analysis/2026-11-10-hitbox-string-table-callers-and-lookup-contract.md) — 24 direct callers were found; the helper behaves as a string-keyed hash lookup, not a numeric entity-ID lookup. The hitbox caller's key/value types remain unresolved. No runtime hooks were added.
