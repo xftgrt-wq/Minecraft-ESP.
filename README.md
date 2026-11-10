@@ -179,3 +179,7 @@ Detailed correction: [Hitbox helper string-key lookup](analysis/2026-11-10-hitbo
 
 ### ECS / AABB discovery (2026-11-10)
 - Identified embedded EnTT ECS signatures for actor/player/item components, AABB shape data, and the `UpdateRenderPosSystem` read/write path. This is static evidence only; registry addresses and safe runtime layouts remain unverified. [Analysis report](analysis/2026-11-10-bedrock-ecs-aabb-render-position-discovery.md).
+
+
+### ECS bounds and camera paths (2026-11-10)
+- Identified a player/minecart/shulker bounding-box writer, an AABB-aware liquid-physics path with optional item-actor flag, and camera/render-position ECS system signatures. Layouts, registry access, and camera matrices remain unverified. [Analysis report](analysis/2026-11-10-ecs-bounds-camera-paths.md).
