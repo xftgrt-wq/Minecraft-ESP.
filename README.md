@@ -127,3 +127,10 @@ Next target is the visitor callback implementation and its AABB field reads. No 
 The filtered-view visitor's concrete callable target is now identified at `0x9e4379c`. It validates multiple component references, reads a scalar from one component, processes 0x18-byte vector-like records with min/max and squared-distance calculations, and emits compact 0x34-byte candidate records. This confirms the path is a CameraAimAssist spatial candidate-selection pipeline, not a straightforward all-entity AABB enumerator. The exact component layouts and world-space semantics are still unknown.
 
 Detailed report: [CameraAimAssist visitor callback spatial trace](analysis/2026-11-10-camera-aimassist-visitor-callback-spatial-trace.md).
+
+
+### Bounds layout clue: SubBBs min/max vectors
+
+The CameraAimAssist visitor's 0x18-byte records are read as six consecutive float32 values (two float3 vectors). SIMD comparisons clamp a reference point between these vectors, calculate squared distance to the box, and derive its midpoint. This is strong evidence that the records represent min/max bounds. Their coordinate space and exact producer are still unresolved, so they are not yet safe to pass as world-space ESP AABBs.
+
+Detailed report: [SubBBs six-float bounds and closest-point calculation](analysis/2026-11-10-subbb-six-float-bounds-closest-point.md).
