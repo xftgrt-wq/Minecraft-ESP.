@@ -143,3 +143,12 @@ The Hitbox helper callsite at `0x9e3cdd8` passes a three-float vector loaded fro
 Detailed report: [Hitbox helper coordinate-source trace](analysis/2026-11-10-hitbox-helper-coordinate-source-trace.md).
 
 No runtime hook was added; live ESP remains unimplemented.
+
+
+### Hitbox helper input-vector provenance
+
+A follow-up trace shows that the three-float input passed to Hitbox helper `0xb58ecd0` is read from an entity-keyed storage slot returned by the paged lookup helper `0x10d67694`. The caller obtains the storage owner through a virtual call at `x25` vtable byte offset `+0x368`, then uses its `+0x48` subobject. The vector is read at storage-object offsets `+0xe8/+0xf0`. This establishes per-entity provenance, but not the concrete component type or whether the values are world-space coordinates.
+
+Detailed report: [Hitbox helper input-vector provenance](analysis/2026-11-10-hitbox-helper-input-vector-provenance.md).
+
+No runtime hook was added; live ESP remains unimplemented.
