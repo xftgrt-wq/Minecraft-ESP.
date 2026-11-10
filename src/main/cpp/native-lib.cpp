@@ -230,7 +230,7 @@ void submitDiagnosticHud() {
             .y3 = 0.0f,
             .color = 0xFFFFFFFFu,
             .size = 24.0f,
-            .text = "ESP HUD TEST - BUILD 124",
+            .text = "ESP: WAITING FOR GAME DATA",
             .fontId = {},
             .imageId = {}
         }
@@ -464,7 +464,7 @@ bool esp_overlay_submit_frame(const EspScreenSegment* playerSegments,
             .type = pl::modmenu::DrawCommandType::Text,
             .x = 26.0f, .y = 53.0f, .w = 0.0f, .h = 0.0f,
             .x3 = 0.0f, .y3 = 0.0f, .color = 0xFFFFFFFFu,
-            .size = 17.0f, .text = "ESP HUD PIPELINE OK",
+            .size = 17.0f, .text = "ESP FRAME SUBMITTED",
             .fontId = {}, .imageId = {}
         });
     }
