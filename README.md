@@ -111,3 +111,12 @@ A new exact-binary trace identifies the FNV-1a component key for `AABBShapeCompo
 Detailed trace: [AABBShape key and CameraAimAssist view trace](analysis/2026-11-10-aabbshape-key-and-camera-aimassist-view-trace.md).
 
 This is a static-analysis milestone only. The AABB component value layout, world/local coordinate semantics, complete player/item coverage, private context lifetime, callback ABI, and render-thread handoff remain unproven. No game hook was enabled and no live entity data is fed into the overlay. The current build is still a HUD prototype, not a working ESP.
+
+
+### Follow-up: filtered-view iteration boundary
+
+A follow-up disassembly of the CameraAimAssist-oriented view builder and its caller shows that it chooses the smallest of six participating component storages, validates packed entity keys against the remaining storages, forms component-slot addresses, and dispatches a per-entity visitor callback. The AABB storage is part of this filtered view, but the 0x20-byte slot stride does not reveal its field layout. The view is system-filtered and cannot yet be treated as a complete player/item feed.
+
+Detailed report: [AABB filtered-view iteration and callback boundary](analysis/2026-11-10-aabb-filtered-view-iteration-callback-boundary.md).
+
+Next target is the visitor callback implementation and its AABB field reads. No runtime hook was added; the module remains HUD-only and live ESP is still not implemented.
