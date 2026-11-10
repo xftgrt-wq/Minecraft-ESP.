@@ -134,3 +134,12 @@ Detailed report: [CameraAimAssist visitor callback spatial trace](analysis/2026-
 The CameraAimAssist visitor's 0x18-byte records are read as six consecutive float32 values (two float3 vectors). SIMD comparisons clamp a reference point between these vectors, calculate squared distance to the box, and derive its midpoint. This is strong evidence that the records represent min/max bounds. Their coordinate space and exact producer are still unresolved, so they are not yet safe to pass as world-space ESP AABBs.
 
 Detailed report: [SubBBs six-float bounds and closest-point calculation](analysis/2026-11-10-subbb-six-float-bounds-closest-point.md).
+
+
+### Hitbox helper coordinate-source follow-up
+
+The Hitbox helper callsite at `0x9e3cdd8` passes a three-float vector loaded from the current object's `+0xe8/+0xf0` fields, a pointer into the current HitboxComponent entry, and two zeroed output vectors. The helper at `0xb58ecd0` returns an entity key that the caller validates against paged storage. In its fallback branch it adds two 3D vectors from the Hitbox entry to two corresponding context-provided vectors, then writes the resulting pair to the outputs. This is consistent with bounds plus a position/transform contribution, but the virtual methods' semantics and world-space guarantee are not yet proven.
+
+Detailed report: [Hitbox helper coordinate-source trace](analysis/2026-11-10-hitbox-helper-coordinate-source-trace.md).
+
+No runtime hook was added; live ESP remains unimplemented.
