@@ -187,3 +187,7 @@ Detailed correction: [Hitbox helper string-key lookup](analysis/2026-11-10-hitbo
 
 ### Renderer view / camera API trace (2026-11-10)
 - Identified `LevelRendererCamera::render(BaseActorRenderContext&, const ViewRenderObject&, IClientInstance&)`, view-oriented render-pipeline types, and `CameraAPIComponent::get()` accessors. Matrix layout, callback/thread contract, and safe ECS access remain unresolved. [Analysis report](analysis/2026-11-10-renderer-view-and-camera-api-trace.md).
+
+
+### View-projection uniform evidence (2026-11-10)
+- Found renderer shader interfaces naming `u_viewProj`, `u_prevViewProj`, `u_invViewProj`, `u_modelViewProj`, and current/previous view-projection uniforms. This confirms GPU-side matrix concepts, not a safe CPU pointer or projection convention. [Analysis report](analysis/2026-11-10-view-projection-uniform-evidence.md).
