@@ -395,6 +395,50 @@ private:
 };
 }
 
+bool esp_overlay_submit_aabbs(const EspAabb* playerBounds,
+                               std::size_t playerCount,
+                               const EspAabb* itemBounds,
+                               std::size_t itemCount,
+                               const float* viewProjection,
+                               float viewportWidth,
+                               float viewportHeight,
+                               float thickness) {
+    constexpr std::size_t kMaxEntitiesPerKind = 256;
+    if ((playerCount && !playerBounds) || (itemCount && !itemBounds) ||
+        !viewProjection || playerCount > kMaxEntitiesPerKind ||
+        itemCount > kMaxEntitiesPerKind ||
+        !std::isfinite(viewportWidth) || !std::isfinite(viewportHeight) ||
+        viewportWidth <= 0.0f || viewportHeight <= 0.0f ||
+        !std::isfinite(thickness) || thickness <= 0.0f ||
+        !g_moduleRegistered.load(std::memory_order_acquire) ||
+        !g_moduleEnabled.load(std::memory_order_acquire)) {
+        return false;
+    }
+
+    std::vector<EspScreenSegment> playerSegments;
+    std::vector<EspScreenSegment> itemSegments;
+    playerSegments.reserve(playerCount * 12);
+    itemSegments.reserve(itemCount * 12);
+    const auto project = [&](const EspAabb* bounds, std::size_t count,
+                             std::vector<EspScreenSegment>& output) {
+        std::array<EspScreenSegment, 12> edges{};
+        for (std::size_t i = 0; i < count; ++i) {
+            const int visible = esp_project_aabb_edges(
+                &bounds[i], viewProjection, viewportWidth, viewportHeight,
+                edges.data());
+            if (visible <= 0) continue;
+            for (const auto& edge : edges) {
+                if (edge.valid) output.push_back(edge);
+            }
+        }
+    };
+    project(playerBounds, playerCount, playerSegments);
+    project(itemBounds, itemCount, itemSegments);
+    return esp_overlay_submit_frame(
+        playerSegments.data(), playerSegments.size(),
+        itemSegments.data(), itemSegments.size(), thickness);
+}
+
 bool esp_overlay_submit_frame(const EspScreenSegment* playerSegments,
                               std::size_t playerCount,
                               const EspScreenSegment* itemSegments,
