@@ -112,6 +112,9 @@ extern "C" const EspAabbEdge* esp_aabb_edges() {
 extern "C" int esp_project_aabb(
     const EspAabb* b, const float* m, float width, float height,
     EspScreenPoint* out) {
+    if (out) {
+        for (int i = 0; i < 8; ++i) out[i] = {};
+    }
     if (!valid_input(b, m, width, height, out))
         return 0;
 
