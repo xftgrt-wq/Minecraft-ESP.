@@ -29,3 +29,8 @@ These observations describe the caller's data flow only. They do not identify th
 
 ## Next static-analysis target
 Trace the producer/constructor of the `0x90)-byte records in `NetworkMonitor_nativeUpdateNetworkStatus` only to understand this caller's data type and key layout. Separately search for entity iteration and AABB/camera projection through independently verified symbols and call chains. Keep all runtime hooks disabled until ABI, object lifetime, thread context, and coordinate space are established.
+
+## Additional trace of the same caller
+The value loaded from `[x25 + 0x1C8]` is passed to `0xE54EBFC`. The PLT entry at that address resolves to `std::__ndk1::__shared_weak_count::lock()`. This indicates the caller promotes a weak shared reference before using the resulting object; it still does not identify that object's domain type. The record iteration is therefore best treated as a generic object-processing path until its producer and concrete types are identified.
+
+The record sequence is reached after a call to `0xE56F558`, which returns the range later traversed as records of stride `0x90`. The exact producer/type remains unresolved.
