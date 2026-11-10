@@ -102,3 +102,12 @@ Do not replace the game's original `libminecraftpe.so` with this prototype. Do n
 3. Validate matrix layout and world-origin rebasing against live game coordinates.
 4. Recover entity/item iteration and AABB access without copying offsets from other Bedrock versions.
 5. Connect validated AABBs to the geometry module and submit drawing only after the callback and coordinate space are proven.
+
+
+## 2026-11-10 static-analysis progress — AABB filtered view
+
+A new exact-binary trace identifies the FNV-1a component key for `AABBShapeComponent` as `0xbac1b3cf`. At `0x9e7ad60`, Bedrock resolves that storage through a strict-context-like object alongside SubBBs, synchronized actor data, actor ownership, actor-removal, and local-player filter storages. The caller at `0x9e7f0e0` builds and iterates a paged, generation-checked filtered view. A nearby lookup for `CameraAimAssistResetEntityExcludedStatusFlagComponent` ties this code path more closely to the CameraAimAssist system.
+
+Detailed trace: [AABBShape key and CameraAimAssist view trace](analysis/2026-11-10-aabbshape-key-and-camera-aimassist-view-trace.md).
+
+This is a static-analysis milestone only. The AABB component value layout, world/local coordinate semantics, complete player/item coverage, private context lifetime, callback ABI, and render-thread handoff remain unproven. No game hook was enabled and no live entity data is fed into the overlay. The current build is still a HUD prototype, not a working ESP.
