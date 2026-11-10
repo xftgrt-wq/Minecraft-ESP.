@@ -152,3 +152,10 @@ A follow-up trace shows that the three-float input passed to Hitbox helper `0xb5
 Detailed report: [Hitbox helper input-vector provenance](analysis/2026-11-10-hitbox-helper-input-vector-provenance.md).
 
 No runtime hook was added; live ESP remains unimplemented.
+
+
+### Hitbox helper lookup correction
+
+A re-read of the callee at `0x10d67694` shows bucket-count calculation and bucket-chain collision handling consistent with a hash-map lookup, not a paged ECS-storage lookup. The caller supplies an entity key and uses the mapped value's `+0xe8/+0xf0` fields as the Hitbox helper's three-float input. The concrete map value type and coordinate semantics remain unknown.
+
+Detailed correction: [Hitbox helper hash-map lookup](analysis/2026-11-10-hitbox-helper-hash-map-lookup-correction.md).
